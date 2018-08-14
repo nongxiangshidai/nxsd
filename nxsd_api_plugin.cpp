@@ -171,9 +171,17 @@ namespace eosio { namespace detail {
         nxsd_api_rpc_account_params admin;   // RPC系统账号和密码
         std::string account_name;             // 用户账号
     };
+
+   struct nxsd_api_table_action_params {
+	   	  string contract_account;
+	      string action;
+	      string table;
+	      string data;
+   };
 }}
 
 FC_REFLECT(eosio::detail::nxsd_api_empty, );
+FC_REFLECT(eosio::detail::nxsd_api_table_action_params, (contract_account)(action)(table)(data));
 FC_REFLECT(eosio::detail::nxsd_api_list_rpc_account_params, (ncount)(accounts));
 FC_REFLECT(eosio::detail::nxsd_api_rpc_account_params, (name)(pw));
 FC_REFLECT(eosio::detail::nxsd_api_delete_rpc_account_params, (admin)(account_name));
@@ -682,6 +690,26 @@ namespace eosio {
             int64_t token_have_inc_count;
 
         private:
+            bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
+               static unordered_map<account_name, std::vector<char> > abi_cache;
+               auto it = abi_cache.find( account );
+               if ( it == abi_cache.end() ) {
+                  const auto result = call(url, get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", account));
+                  std::tie( it, std::ignore ) = abi_cache.emplace( account, result["abi"].as_blob().data );
+               }
+               const std::vector<char>& abi_v = it->second;
+
+               abi_def abi;
+               if( abi_serializer::to_abi(abi_v, abi) ) {
+                  abi_serializer abis( abi, fc::seconds(10) );
+                  auto action_type = abis.get_action_type(action);
+                  FC_ASSERT(!action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)("contract", account));
+                  return abis.variant_to_binary(action_type, action_args_var, fc::seconds(10));
+               } else {
+                  FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
+               }
+            }
+
             void do_get_balance(const string& code, const string& account, const string& symbol, vector<string>& b_vec){
                 if( is_localhost() ){
                     using balance_params = eosio::chain_apis::read_only::get_currency_balance_params;
