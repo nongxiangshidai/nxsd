@@ -173,15 +173,18 @@ namespace eosio { namespace detail {
     };
 
    struct nxsd_api_table_action_params {
-	   	  string contract_account;
-	      string action;
-	      string table;
-	      string data;
+          std::string wallet;      // 钱包名称
+          std::string ppwww;       // 钱包密码
+	   	  string contract_account; // 部署了合约的账号
+	      string action;           // action名
+	      string table;            // 表名
+	      string data;             // 表记录数据
+          nxsd_api_rpc_account_params rpc_account; // rpc接口账号
    };
 }}
 
 FC_REFLECT(eosio::detail::nxsd_api_empty, );
-FC_REFLECT(eosio::detail::nxsd_api_table_action_params, (contract_account)(action)(table)(data));
+FC_REFLECT(eosio::detail::nxsd_api_table_action_params, (wallet)(ppwww)(contract_account)(action)(table)(data)(rpc_account));
 FC_REFLECT(eosio::detail::nxsd_api_list_rpc_account_params, (ncount)(accounts));
 FC_REFLECT(eosio::detail::nxsd_api_rpc_account_params, (name)(pw));
 FC_REFLECT(eosio::detail::nxsd_api_delete_rpc_account_params, (admin)(account_name));
@@ -276,6 +279,48 @@ namespace eosio {
         nxsd_api_plugin_impl(appbase::application& app)
         : _app(app)
         {}
+
+        // 数据上链
+        results_pair handle_table(const std::string& body){
+            const eosio::detail::nxsd_api_table_action_params str_params = fc::json::from_string(body).as<eosio::detail::nxsd_api_table_action_params>();
+            
+            eosio::detail::nxsd_api_error_msg err_msg;
+            error_code ret_code = verify_rpc_account(str_params.rpc_account);
+            err_msg.code =  ret_code;
+            err_msg.message = error_code_str(ret_code);
+            
+            if( succeeded != err_msg.code ){
+                return {err_msg.code, fc::variant(err_msg)};
+            }
+
+            string str_data("");
+            str_data = "[\"" + str_params.table + "\"" + "," + "\"" + str_params.data + "\"" + "]";
+            fc::variant action_args_var;
+            if( !str_data.empty() ) {
+                try {
+                    action_args_var = fc::json::from_string(str_data, fc::json::relaxed_parser);
+                } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data", str_data))
+            }
+            
+            vector<string> tx_permission;
+            tx_permission.push_back(str_params.contract_account);
+            auto accountPermissions = get_account_permissions(tx_permission);
+            
+            auto& w_plugin = _app.get_plugin<wallet_plugin>();
+            // begin, 防止已解锁的钱包再解锁，导致异常程序退出
+            w_plugin.get_wallet_manager().open(str_params.wallet); 
+            w_plugin.get_wallet_manager().lock(str_params.wallet); 
+            // end
+            w_plugin.get_wallet_manager().unlock(str_params.wallet, RSA_pub_decrypt(str_params.ppwww));
+
+            //const auto& result = send_actions({create_action({permission_level{str_params.from,config::active_name}}, config::system_account_name, N(undelegatebw), act_payload)});
+            
+            const auto& result = send_actions({chain::action{accountPermissions, str_params.contract_account, str_params.action, variant_to_bin( str_params.contract_account, str_params.action, action_args_var ) }});
+
+            w_plugin.get_wallet_manager().lock(str_params.wallet);
+
+            return { succeeded, result };
+        }
 
         // 创建RPC API使用账号
         results_pair create_rpc_account(const std::string& body){
@@ -691,23 +736,33 @@ namespace eosio {
 
         private:
             bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
-               static unordered_map<account_name, std::vector<char> > abi_cache;
-               auto it = abi_cache.find( account );
-               if ( it == abi_cache.end() ) {
-                  const auto result = call(url, get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", account));
-                  std::tie( it, std::ignore ) = abi_cache.emplace( account, result["abi"].as_blob().data );
-               }
-               const std::vector<char>& abi_v = it->second;
+                static unordered_map<account_name, std::vector<char> > abi_cache;
+                auto it = abi_cache.find( account );
 
-               abi_def abi;
-               if( abi_serializer::to_abi(abi_v, abi) ) {
-                  abi_serializer abis( abi, fc::seconds(10) );
-                  auto action_type = abis.get_action_type(action);
-                  FC_ASSERT(!action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)("contract", account));
-                  return abis.variant_to_binary(action_type, action_args_var, fc::seconds(10));
-               } else {
-                  FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
-               }
+                if ( it == abi_cache.end() ) {
+                    if( is_localhost() ){
+                        using code_abi_params = eosio::chain_apis::read_only::get_raw_code_and_abi_params;
+                        code_abi_params params{account};
+                        auto& c_plugin = _app.get_plugin<chain_plugin>();
+                        const auto result = c_plugin.get_read_only_api().get_raw_code_and_abi(params);
+                        std::tie( it, std::ignore ) = abi_cache.emplace( account, result.abi.data );
+                    } else {
+                        const auto result = call(url, get_raw_code_and_abi_func, fc::mutable_variant_object("account_name", account));
+                        std::tie( it, std::ignore ) = abi_cache.emplace( account, result["abi"].as_blob().data );
+                    }
+                }
+                
+                const std::vector<char>& abi_v = it->second;
+
+                abi_def abi;
+                if( abi_serializer::to_abi(abi_v, abi) ) {
+                    abi_serializer abis( abi, fc::seconds(10) );
+                    auto action_type = abis.get_action_type(action);
+                    FC_ASSERT(!action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)("contract", account));
+                    return abis.variant_to_binary(action_type, action_args_var, fc::seconds(10));
+                } else {
+                    FC_ASSERT(false, "No ABI found for ${contract}", ("contract", account));
+                }
             }
 
             void do_get_balance(const string& code, const string& account, const string& symbol, vector<string>& b_vec){
@@ -1399,6 +1454,7 @@ namespace eosio {
         CALL( nxsd, my, create_rpc_account, nxsd_api_plugin_impl::create_rpc_account),
         CALL( nxsd, my, delete_rpc_account, nxsd_api_plugin_impl::delete_rpc_account),
         CALL( nxsd, my, list_rpc_account, nxsd_api_plugin_impl::list_rpc_account),
+        CALL( nxsd, my, handle_table, nxsd_api_plugin_impl::handle_table),
         CALL( nxsd, my, create_account, nxsd_api_plugin_impl::create_account)
         });
     }
