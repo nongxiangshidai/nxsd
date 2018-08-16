@@ -293,8 +293,15 @@ namespace eosio {
                 return {err_msg.code, fc::variant(err_msg)};
             }
 
+            string cur_time = get_cur_local_time();
+
             string str_data("");
-            str_data = "[\"" + str_params.table + "\"" + "," + "\"" + str_params.data + "\"" + "]";
+            if( 0 == str_params.action.compare("insert") || 0 == str_params.action.compare("add") ){
+                str_data = "[\"" + str_params.table + "\"" + "," + "\"" + str_params.data + "," + cur_time + "\"" + "]";
+            } else {
+                str_data = "[\"" + str_params.table + "\"" + "," + "\"" + str_params.data + "\"" + "]";
+            }
+            
             fc::variant action_args_var;
             if( !str_data.empty() ) {
                 try {
@@ -735,6 +742,21 @@ namespace eosio {
             int64_t token_have_inc_count;
 
         private:
+            string get_cur_local_time(const char* format = "%F %T", const tm* cur = NULL)
+            {
+                const tm *tm_cur = cur;
+
+                if ( !cur ){
+                    time_t rawtime = time(NULL);
+                    tm_cur = localtime(&rawtime);
+                }
+
+                char cstr_time[21]{'\0'};
+                strftime(cstr_time, 20, format, tm_cur);
+
+                return string(cstr_time);
+            }
+
             bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
                 static unordered_map<account_name, std::vector<char> > abi_cache;
                 auto it = abi_cache.find( account );
@@ -751,7 +773,7 @@ namespace eosio {
                         std::tie( it, std::ignore ) = abi_cache.emplace( account, result["abi"].as_blob().data );
                     }
                 }
-                
+
                 const std::vector<char>& abi_v = it->second;
 
                 abi_def abi;

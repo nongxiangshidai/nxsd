@@ -29,7 +29,9 @@ namespace nxsd {
                        string condition // 表记录更新条件，如: name=Lina when id=xxxx
                       );
 
-          void del( string table_name, string condition );
+          void del( string table_name,
+        		  string condition  // 删除记录条件，如：id=oneid
+				  );
 
           //void query( string id );
 
