@@ -5,6 +5,14 @@
 #include <eosiolib/print.hpp>
 
 #define ASSERT_FIELDS_COUNT(num1, num2) eosio_assert( num1 == num2, "the fileds count is not equal colums of fields" );
+
+#define DELETE_ONE_RECORD(table_obj, del_condition) \
+			table_obj t_obj(_self, eosio::string_to_name(table_scope)); \
+			auto id_index = eosio::string_to_name(del_condition.c_str()); \
+			auto existing = t_obj.find( id_index ); \
+			eosio_assert( existing != t_obj.end(), "the record is not exist" ); \
+			t_obj.erase(existing);
+
 namespace nxsd {
 
   const char *table_scope = "nxsd";
@@ -138,82 +146,42 @@ namespace nxsd {
 
   void farm::farm_del( string condition )
   {
-      farm_stats farm_table(_self, eosio::string_to_name(table_scope));
-      auto id_index = eosio::string_to_name(condition.c_str());
-      auto existing = farm_table.find( id_index );
-      eosio_assert( existing != farm_table.end(), "the farm is not exist" );
-
-      farm_table.erase(existing);
+	  DELETE_ONE_RECORD(farm_stats, condition)
   }
 
   void farm::xbeans_del( string condition )
   {
-      xbean_trxs tb(_self, eosio::string_to_name(table_scope));
-      auto id_index = eosio::string_to_name(condition.c_str());
-      auto existing = tb.find( id_index );
-      eosio_assert( existing != tb.end(), "the xbean transaction is not exist" );
-
-      tb.erase(existing);
+      DELETE_ONE_RECORD(xbean_trxs, condition)
   }
 
   void farm::quantumchook_del( string condition )
   {
-      quantum_chooks tb(_self, eosio::string_to_name(table_scope));
-      auto id_index = eosio::string_to_name(condition.c_str());
-      auto existing = tb.find( id_index );
-      eosio_assert( existing != tb.end(), "the quantum chook is not exist" );
-
-      tb.erase(existing);
+      DELETE_ONE_RECORD(quantum_chooks, condition)
   }
 
   void farm::quantumegg_del( string condition )
   {
-      quantum_eggs tb(_self, eosio::string_to_name(table_scope));
-      auto id_index = eosio::string_to_name(condition.c_str());
-      auto existing = tb.find( id_index );
-      eosio_assert( existing != tb.end(), "the quantum egg is not exist" );
-
-      tb.erase(existing);
+      DELETE_ONE_RECORD(quantum_eggs, condition)
   }
 
   void farm::chook_del( string condition )
   {
-      chooks tb(_self, eosio::string_to_name(table_scope));
-      auto id_index = eosio::string_to_name(condition.c_str());
-      auto existing = tb.find( id_index );
-      eosio_assert( existing != tb.end(), "the chook is not exist" );
-
-      tb.erase(existing);
+      DELETE_ONE_RECORD(chooks, condition)
   }
 
   void farm::chookfeeding_del( string condition )
   {
-      chook_feedings tb(_self, eosio::string_to_name(table_scope));
-      auto id_index = eosio::string_to_name(condition.c_str());
-      auto existing = tb.find( id_index );
-      eosio_assert( existing != tb.end(), "the record of chook feeding is not exist" );
-
-      tb.erase(existing);
+      DELETE_ONE_RECORD(chook_feedings, condition)
   }
 
   void farm::disinfect_del( string condition )
   {
-      cdisinfects tb(_self, eosio::string_to_name(table_scope));
-      auto id_index = eosio::string_to_name(condition.c_str());
-      auto existing = tb.find( id_index );
-      eosio_assert( existing != tb.end(), "the record of chook disinfecting is not exist" );
-
-      tb.erase(existing);
+      DELETE_ONE_RECORD(cdisinfects, condition)
   }
 
   void farm::fatten_del( string condition )
   {
-      cfattens tb(_self, eosio::string_to_name(table_scope));
-      auto id_index = eosio::string_to_name(condition.c_str());
-      auto existing = tb.find( id_index );
-      eosio_assert( existing != tb.end(), "the record of chook fattening is not exist" );
-
-      tb.erase(existing);
+      DELETE_ONE_RECORD(cfattens, condition)
   }
 
 	void farm::farm_insert(
