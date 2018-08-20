@@ -251,7 +251,7 @@ namespace eosio {
         }}
 
     auto         tx_expiration = fc::seconds(60);  // 交易默认超时时间
-    const bool   tx_force_unique = false;               // 
+    const bool   tx_force_unique = false;               
     const bool   tx_dont_broadcast = false;             //  不广播交易
     const bool   tx_skip_sign = false;                  // 交易跳过签名
 
@@ -279,6 +279,49 @@ namespace eosio {
         nxsd_api_plugin_impl(appbase::application& app)
         : _app(app)
         {}
+
+        // 按条件查找链上表中的数据
+        results_pair query_table(const std::string& body){
+        	const auto& c_plugin = _app.get_plugin<chain_plugin>();
+        	const auto& db = c_plugin.chain().db();
+
+            const auto& code_account = db.get<account_object,by_name>( config::system_account_name );
+
+            abi_def abi;
+            if( abi_serializer::to_abi(code_account.abi, abi) ) {
+                abi_serializer abis( abi, abi_serializer_max_time );
+
+                const auto token_code = N(eosio.token);
+
+                const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
+                if( t_id != nullptr ) {
+                    const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+                    auto it = idx.find(boost::make_tuple( t_id->id, symbol().to_symbol_code() ));
+                    if( it != idx.end() && it->value.size() >= sizeof(asset) ) {
+                        asset bal;
+                        fc::datastream<const char *> ds(it->value.data(), it->value.size());
+                        fc::raw::unpack(ds, bal);
+
+                        if( bal.get_symbol().valid() && bal.get_symbol() == symbol() ) {
+                        result.core_liquid_balance = bal;
+                        }
+                    }
+                }
+
+                t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
+                if (t_id != nullptr) {
+                    const auto &idx = d.get_index<key_value_index, by_scope_primary>();
+                    auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
+                    if ( it != idx.end() ) {
+                        vector<char> data;
+                        copy_inline_row(*it, data);
+                        result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer_max_time );
+                    }
+                }
+            }
+
+        	return {0,  fc::variant()};
+        }
 
         // 数据上链
         results_pair handle_table(const std::string& body){
