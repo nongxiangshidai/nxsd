@@ -33,7 +33,7 @@ namespace nxsd {
         		  string condition  // 删除记录条件，如：id=oneid
 				  );
 
-          //void query( string id );
+          void query( string id );
 
       private:
         void farm_insert( string id,

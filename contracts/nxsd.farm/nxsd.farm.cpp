@@ -80,7 +80,7 @@ namespace nxsd {
           if( vec_set.size() >= 1 )
           {
               std::vector<std::string> vec_updated = nxsd::split(vec_set[vec_set.size() - 1], ",");
-              for( int i =0; i < vec_updated.size(); ++i)
+              for( std::string::size_type i =0; i < vec_updated.size(); ++i)
               {
                   std::vector<std::string> vec_fv = nxsd::split(vec_updated[i], "=");
                   if( vec_fv.size() == 2 )
@@ -142,6 +142,11 @@ namespace nxsd {
               fatten_del(vec_con[1]);
           }
       }
+  }
+
+  // @abi action
+  void farm::query( string table_name ){
+	  eosio_assert( 1 == m_tables.count(table_name), "the table is not exist" );
   }
 
   void farm::farm_del( string condition )
@@ -586,4 +591,4 @@ namespace nxsd {
 
 } // nxsd
 
-EOSIO_ABI( nxsd::farm, (insert)(update)(del) )
+EOSIO_ABI( nxsd::farm, (insert)(update)(del)(query) )

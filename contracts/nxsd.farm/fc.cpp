@@ -1,22 +1,22 @@
 
 #include "fc.hpp"
 
-namespace nxsd{
+namespace nxsd {
 	std::vector<std::string> split(std::string str,std::string pattern){
         std::string::size_type pos;
         std::vector<std::string> result;
-        str+=pattern;//扩展字符串以方便操作
-        int size=str.size();
+        str += pattern;//扩展字符串以方便操作
+        std::string::size_type size = str.size();
     
-        for(int i=0; i<size; i++)
+        for( std::string::size_type i = 0; i < size;  i++ )
         {
-            pos=str.find(pattern,i);
-            if(pos<size)
+            pos = str.find(pattern, i);
+            if( pos <size )
             {
-                std::string s=str.substr(i,pos-i);
+                std::string s = str.substr(i, pos - i);
                 trim(s);
                 result.push_back(s);
-                i=pos+pattern.size()-1;
+                i = pos + pattern.size() - 1;
             }
         }
         return result;

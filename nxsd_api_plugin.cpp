@@ -280,50 +280,7 @@ namespace eosio {
         : _app(app)
         {}
 
-        // 按条件查找链上表中的数据
-        results_pair query_table(const std::string& body){
-        	const auto& c_plugin = _app.get_plugin<chain_plugin>();
-        	const auto& db = c_plugin.chain().db();
-
-            const auto& code_account = db.get<account_object,by_name>( config::system_account_name );
-
-            abi_def abi;
-            if( abi_serializer::to_abi(code_account.abi, abi) ) {
-                abi_serializer abis( abi, abi_serializer_max_time );
-
-                const auto token_code = N(eosio.token);
-
-                const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));
-                if( t_id != nullptr ) {
-                    const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-                    auto it = idx.find(boost::make_tuple( t_id->id, symbol().to_symbol_code() ));
-                    if( it != idx.end() && it->value.size() >= sizeof(asset) ) {
-                        asset bal;
-                        fc::datastream<const char *> ds(it->value.data(), it->value.size());
-                        fc::raw::unpack(ds, bal);
-
-                        if( bal.get_symbol().valid() && bal.get_symbol() == symbol() ) {
-                        result.core_liquid_balance = bal;
-                        }
-                    }
-                }
-
-                t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( config::system_account_name, params.account_name, N(userres) ));
-                if (t_id != nullptr) {
-                    const auto &idx = d.get_index<key_value_index, by_scope_primary>();
-                    auto it = idx.find(boost::make_tuple( t_id->id, params.account_name ));
-                    if ( it != idx.end() ) {
-                        vector<char> data;
-                        copy_inline_row(*it, data);
-                        result.total_resources = abis.binary_to_variant( "user_resources", data, abi_serializer_max_time );
-                    }
-                }
-            }
-
-        	return {0,  fc::variant()};
-        }
-
-        // 数据上链
+        // 数据上链及查询
         results_pair handle_table(const std::string& body){
             const eosio::detail::nxsd_api_table_action_params str_params = fc::json::from_string(body).as<eosio::detail::nxsd_api_table_action_params>();
             
@@ -336,26 +293,13 @@ namespace eosio {
                 return {err_msg.code, fc::variant(err_msg)};
             }
 
-            string cur_time = get_cur_local_time();
-
-            string str_data("");
-            if( 0 == str_params.action.compare("insert") || 0 == str_params.action.compare("add") ){
-                str_data = "[\"" + str_params.table + "\"" + "," + "\"" + str_params.data + "," + cur_time + "\"" + "]";
-            } else {
-                str_data = "[\"" + str_params.table + "\"" + "," + "\"" + str_params.data + "\"" + "]";
-            }
-            
-            fc::variant action_args_var;
-            if( !str_data.empty() ) {
-                try {
-                    action_args_var = fc::json::from_string(str_data, fc::json::relaxed_parser);
-                } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data", str_data))
-            }
-            
             vector<string> tx_permission;
             tx_permission.push_back(str_params.contract_account);
             auto accountPermissions = get_account_permissions(tx_permission);
-            
+
+            fc::variant result;
+            fc::variant action_args_var;
+
             auto& w_plugin = _app.get_plugin<wallet_plugin>();
             // begin, 防止已解锁的钱包再解锁，导致异常程序退出
             w_plugin.get_wallet_manager().open(str_params.wallet); 
@@ -363,9 +307,30 @@ namespace eosio {
             // end
             w_plugin.get_wallet_manager().unlock(str_params.wallet, RSA_pub_decrypt(str_params.ppwww));
 
-            //const auto& result = send_actions({create_action({permission_level{str_params.from,config::active_name}}, config::system_account_name, N(undelegatebw), act_payload)});
-            
-            const auto& result = send_actions({chain::action{accountPermissions, str_params.contract_account, str_params.action, variant_to_bin( str_params.contract_account, str_params.action, action_args_var ) }});
+            if( 0 == str_params.action.compare("query") || 0 == str_params.action.compare("QUERY") ){
+                action_args_var = fc::json::from_string(str_params.table, fc::json::relaxed_parser);
+
+                send_actions({chain::action{accountPermissions, str_params.contract_account, str_params.action, variant_to_bin( str_params.contract_account, str_params.action, action_args_var ) }});
+
+                result = query_table(str_params);
+            } else {
+                string cur_time = get_cur_local_time();
+
+                string str_data("");
+                if( 0 == str_params.action.compare("insert") || 0 == str_params.action.compare("add") ){
+                    str_data = "[\"" + str_params.table + "\"" + "," + "\"" + str_params.data + "," + cur_time + "\"" + "]";
+                } else {
+                    str_data = "[\"" + str_params.table + "\"" + "," + "\"" + str_params.data + "\"" + "]";
+                }
+                
+                if( !str_data.empty() ) {
+                    try {
+                        action_args_var = fc::json::from_string(str_data, fc::json::relaxed_parser);
+                    } EOS_RETHROW_EXCEPTIONS(action_type_exception, "Fail to parse action JSON data='${data}'", ("data", str_data))
+                }
+                
+                result = send_actions({chain::action{accountPermissions, str_params.contract_account, str_params.action, variant_to_bin( str_params.contract_account, str_params.action, action_args_var ) }});
+            }
 
             w_plugin.get_wallet_manager().lock(str_params.wallet);
 
@@ -785,6 +750,35 @@ namespace eosio {
             int64_t token_have_inc_count;
 
         private:
+            // 按条件查找链上表中的数据
+            fc::variant query_table(const eosio::detail::nxsd_api_table_action_params& str_params){
+                const auto& c_plugin = _app.get_plugin<chain_plugin>();
+                const auto& db = c_plugin.chain().db();
+
+                const auto& code_account = db.get<account_object, by_name>( eosio::string_to_name(str_params.contract_account.c_str()) );
+
+                const fc::microseconds abi_serializer_max_time(10 * 1000);
+
+                vector<fc::variant> rows;
+                abi_def abi;
+                if( abi_serializer::to_abi(code_account.abi, abi) ) {
+                    abi_serializer abis( abi, abi_serializer_max_time );
+
+                    const auto* t_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( eosio::string_to_name(str_params.contract_account.c_str()), N(nxsd), eosio::string_to_name(str_params.table.c_str()) ));
+                    if (t_id != nullptr) {
+                        const auto &idx = db.get_index<key_value_index, by_scope_primary>();
+                        auto it = idx.find(boost::make_tuple( t_id->id, eosio::string_to_name(str_params.data.c_str()) ));
+                        if ( it != idx.end() ) {
+                            vector<char> data;
+                            eosio::chain_apis::read_only::copy_inline_row(*it, data);
+                            rows.emplace_back(abis.binary_to_variant(abis.get_table_type(eosio::string_to_name(str_params.table.c_str())), data, abi_serializer_max_time));
+                        }
+                    }
+                }
+
+                return fc::variant(rows);
+            }
+
             string get_cur_local_time(const char* format = "%F %T", const tm* cur = NULL)
             {
                 const tm *tm_cur = cur;
