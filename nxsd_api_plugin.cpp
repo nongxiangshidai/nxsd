@@ -298,6 +298,7 @@ namespace eosio {
             auto accountPermissions = get_account_permissions(tx_permission);
 
             fc::variant result;
+            string str_data("");
             fc::variant action_args_var;
 
             auto& w_plugin = _app.get_plugin<wallet_plugin>();
@@ -308,15 +309,15 @@ namespace eosio {
             w_plugin.get_wallet_manager().unlock(str_params.wallet, RSA_pub_decrypt(str_params.ppwww));
 
             if( 0 == str_params.action.compare("query") || 0 == str_params.action.compare("QUERY") ){
+                str_data = "[\"" + str_params.table + "\"" + "]";
                 action_args_var = fc::json::from_string(str_params.table, fc::json::relaxed_parser);
 
-                send_actions({chain::action{accountPermissions, str_params.contract_account, str_params.action, variant_to_bin( str_params.contract_account, str_params.action, action_args_var ) }});
+                //result = send_actions({chain::action{accountPermissions, str_params.contract_account, str_params.action, variant_to_bin( str_params.contract_account, str_params.action, action_args_var ) }});
 
                 result = query_table(str_params);
             } else {
                 string cur_time = get_cur_local_time();
 
-                string str_data("");
                 if( 0 == str_params.action.compare("insert") || 0 == str_params.action.compare("add") ){
                     str_data = "[\"" + str_params.table + "\"" + "," + "\"" + str_params.data + "," + cur_time + "\"" + "]";
                 } else {
@@ -767,7 +768,10 @@ namespace eosio {
                     const auto* t_id = db.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( eosio::string_to_name(str_params.contract_account.c_str()), N(nxsd), eosio::string_to_name(str_params.table.c_str()) ));
                     if (t_id != nullptr) {
                         const auto &idx = db.get_index<key_value_index, by_scope_primary>();
-                        auto it = idx.find(boost::make_tuple( t_id->id, eosio::string_to_name(str_params.data.c_str()) ));
+                        vector<string> vec_con;
+                        boost::split( vec_con, str_params.data , boost::is_any_of( "=" ), boost::token_compress_on );
+                        string str_data = vec_con.size() >= 2 ? vec_con[1] : vec_con[0];
+                        auto it = idx.find(boost::make_tuple( t_id->id, eosio::string_to_name(str_data.c_str()) ));
                         if ( it != idx.end() ) {
                             vector<char> data;
                             eosio::chain_apis::read_only::copy_inline_row(*it, data);

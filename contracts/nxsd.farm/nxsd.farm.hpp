@@ -22,7 +22,7 @@ namespace nxsd {
           :contract(self) {}
 
           void insert( string table_name,
-                      string fields // 逗号分隔的表列值
+                      string fields // 逗号分隔的表列值，如：fvalue1,fvalue2,fvalue3
                      );
 
           void update( string table_name, 
@@ -30,10 +30,10 @@ namespace nxsd {
                       );
 
           void del( string table_name,
-        		  string condition  // 删除记录条件，如：id=oneid
+        		  string condition  // 删除记录条件，如：id=someid
 				  );
 
-          void query( string id );
+          void query( string id );  // 查询记录条件，如：id=someid
 
       private:
         void farm_insert( string id,
