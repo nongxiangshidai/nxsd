@@ -2,20 +2,22 @@
 An open source plugin for eosio blockchain
 
 # 部署插件步骤
-1：下载此插件源码  
+1：下载插件源码，执行插件配置脚本install_nxsd_plugin.sh，如果脚本执行成功则跳到第9步；执行失败则从第2步开始配置。  
 2：将eosio-nxsd-plugin文件夹复制到eosio源码根目录下的plugins目录下  
 3：将eosio-nxsd-plugin目录名为nxsd_api_plugin  
 4：修改programs/nodeos/CMakeLists.txt文件，在target_link_libraries条目里添加一行"PRIVATE -Wl,${whole_archive_flag} nxsd_api_plugin            -Wl,${no_whole_archive_flag}"（不要双引号）  
 5：修改plugins/CMakeLists.txt文件，添加一行“add_subdirectory(nxsd_api_plugin)”（不要双引号）  
-6：重新编译eosio源码  
-7: 修改config.ini配置文件，将wallet-dir设置为本地钱包路径的绝对路径，如：/Users/zl/eosio-wallet  
-8: 修改config.ini配置文件，添加trx-broadcast-url选项，设置交易广播的节点url，如：http://127.0.0.1:8888  
-9: 修改config.ini配置文件，添加rsa-priv-file选项，设置pem格式的私钥文件（绝对路径），如：/temp/priv.pem  
-10: 修改config.ini配置文件，添加rsa-pub-file选项，设置pem格式的公钥文件（绝对路径），如：/temp/pub.pem  
-11: 修改config.ini配置文件，添加rpc-account-file选项，设置rpc接口调用账号文件（绝对路径），如：/temp/rpc_acc.dat  
-12: 修改config.ini配置文件，添加token-inc-meta选项，ICO增发规则，如：wallet:wallet-passwd:sender:to:total:token_symbol:inc_ratio:y|m|w|d|h|n:inc_num  
-13: 修改config.ini配置文件，启用新增的插件，增加plugin = eosio::nxsd_api_plugin  
-14:用config.ini配置文件启动nodeos，完成。  
+6：修改contracts/CMakeLists.txt文件，添加一行“add_subdirectory(nxsd.farm)”（不要双引号）  
+7: 修改nodeos使用的config.ini文件，改动如下：  
+wallet-dir =                    # 修改，本地钱包路径的绝对路径，如：/Users/zl/eosio-wallet  
+trx-broadcast-url =             # 新增，交易广播的节点url，如：http://127.0.0.1:8888  
+rsa-priv-file =                 # 新增，pem格式的私钥文件（绝对路径），如：/temp/priv.pem  
+rsa-pub-file =                  # 新增，pem格式的公钥文件（绝对路径），如：/temp/pub.pem  
+rpc-account-file =              # 新增，rpc接口调用账号文件（绝对路径），如：/temp/rpc_acc.dat  
+token-inc-meta =                # 新增，ICO增发规则，如：wallet:wallet-passwd:sender:to:total:token_symbol:inc_ratio:y|m|w|d|h|n:inc_num  
+plugin = eosio::nxsd_api_plugin # 新增   
+8: 编译eosio源码  
+9: 配置好第7步骤中的选项值，启动nodeos，完成。  
 
 # 新增RPC接口调用事例 
 1. 创建账户  

@@ -614,8 +614,8 @@ namespace eosio {
             return { succeeded, fc::variant(b_vec) };
         }
 
-        // 转账、发币
-        results_pair coin_transfer(const std::string& body){
+        // 转账
+        results_pair token_transfer(const std::string& body){
             const eosio::detail::nxsd_api_transfer_params str_params = fc::json::from_string(body).as<eosio::detail::nxsd_api_transfer_params>();
 
             eosio::detail::nxsd_api_error_msg err_msg;
@@ -1507,7 +1507,7 @@ namespace eosio {
         ilog( "starting nxsd_api_plugin" );
         app().get_plugin<http_plugin>().add_api({
         CALL( nxsd, my, create_key, nxsd_api_plugin_impl::create_key ),
-        CALL( nxsd, my, coin_transfer, nxsd_api_plugin_impl::coin_transfer),
+        CALL( nxsd, my, token_transfer, nxsd_api_plugin_impl::token_transfer),
         CALL( nxsd, my, get_balance, nxsd_api_plugin_impl::get_balance),
         CALL( nxsd, my, delegatebw, nxsd_api_plugin_impl::delegatebw),
         CALL( nxsd, my, undelegatebw, nxsd_api_plugin_impl::undelegatebw),
