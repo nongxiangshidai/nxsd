@@ -8,6 +8,7 @@
 #include <eosio/utilities/key_conversion.hpp>
 #include <eosio/nxsd_api_plugin/httpc.hpp>
 #include <eosio/nxsd_api_plugin/pke.hpp>
+#include <eosio/nxsd_api_plugin/nxsd_wallet_manager.hpp>
 
 #include <fc/variant.hpp>
 #include <fc/io/json.hpp>
@@ -666,14 +667,16 @@ namespace eosio {
                ("receiver", str_params.receiver)
                ("quant", ast);
             
-            auto& w_plugin = _app.get_plugin<wallet_plugin>();
-            // begin, 防止已解锁的钱包再解锁，导致异常程序退出
-            w_plugin.get_wallet_manager().open(str_params.wallet); 
-            w_plugin.get_wallet_manager().lock(str_params.wallet); 
-            // end
-            w_plugin.get_wallet_manager().unlock(str_params.wallet, RSA_pub_decrypt(str_params.ppwww));
+            nxsd_wallet_manager nxsd_wt_mgr(_app, has_pub_key);
+            nxsd_wt_mgr.open(str_params.wallet, str_params.ppwww, pub_key);
+            // auto& w_plugin = _app.get_plugin<wallet_plugin>();
+            // // begin, 防止已解锁的钱包再解锁，导致异常程序退出
+            // w_plugin.get_wallet_manager().open(str_params.wallet); 
+            // w_plugin.get_wallet_manager().lock(str_params.wallet); 
+            // // end
+            // w_plugin.get_wallet_manager().unlock(str_params.wallet, RSA_pub_decrypt(str_params.ppwww));
             const auto& result = send_actions({create_action({permission_level{str_params.payer,config::active_name}}, config::system_account_name, N(buyram), act_payload)});
-            w_plugin.get_wallet_manager().lock(str_params.wallet); 
+            //w_plugin.get_wallet_manager().lock(str_params.wallet); 
 
             return { succeeded, result };
         }

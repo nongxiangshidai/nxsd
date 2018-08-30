@@ -1,6 +1,7 @@
 file(GLOB HEADERS "include/eosio/nxsd_api_plugin/*.hpp")
 add_library( nxsd_api_plugin
              nxsd_api_plugin.cpp
+	     nxsd_wallet_manager.cpp
              pke.cpp
              httpc.cpp
              ${HEADERS} )
