@@ -448,6 +448,8 @@ namespace eosio {
             w_plugin.get_wallet_manager().lock(str_params.wallet); 
             // end
             w_plugin.get_wallet_manager().unlock(str_params.wallet, RSA_pub_decrypt(str_params.ppwww));
+            //nxsd_wallet_manager nxsd_wt_mgr(_app, has_pub_key);
+            //nxsd_wt_mgr.open(str_params.wallet, str_params.ppwww, pub_key);
 
             fc::variant result;
             if( !str_params.buy_ram_eos.empty() ){

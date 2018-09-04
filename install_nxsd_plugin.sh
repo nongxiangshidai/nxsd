@@ -44,6 +44,7 @@ eos_dir=$1
 
 eos_nxsd_plugin_dir="${eos_dir}/plugins/nxsd_api_plugin"
 eos_contract_dir="${eos_dir}/contracts"
+eos_build_dir="${eos_dir}/build"
 
 eos_nodeos_cmakelist_file="${eos_dir}/programs/nodeos/CMakeLists.txt"
 eos_plugins_cmakelist_file="${eos_dir}/plugins/CMakeLists.txt"
@@ -123,6 +124,22 @@ function copy_plugin_dir_to_github()
   fi
 }
 
+function make_install()
+{
+  echo "****************************************"
+  echo "Be going to make install EOSIO programs"
+  echo "Please input the password for ROOT"
+  echo "****************************************"
+
+  cd ${eos_build_dir} && sudo make install
+
+  if [ $? -eq 0 ]; then
+    echo 
+    echo "!!SUCCESS FOR INSTALL EOSIO!!"
+    echo
+  fi
+}
+
 function build_eosio()
 {
   if ! read -t 23 -p "The nxsd plugin source is ready, do you want to build eosio now?[y/n] " yORn
@@ -139,6 +156,8 @@ function build_eosio()
       echo
       echo "!!SUCCESS FOR BUILD EOSIO!!"
       echo
+
+      make_install
     fi
   fi
 }
