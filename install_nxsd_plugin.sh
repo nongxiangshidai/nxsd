@@ -8,8 +8,6 @@
 # file:   install_nxsd_plugin.sh
 # ****************************************************************
 
-set -o errexit
-
 function usage()
 {
   if [ "X$1" == "Xp" ]
