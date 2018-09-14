@@ -9,7 +9,6 @@ An open source plugin for eosio blockchain
 5：修改plugins/CMakeLists.txt文件，添加一行“add_subdirectory(nxsd_api_plugin)”（不要双引号）  
 6：修改contracts/CMakeLists.txt文件，添加一行“add_subdirectory(nxsd.farm)”（不要双引号）  
 7: 修改nodeos使用的config.ini文件，改动如下：  
-wallet-dir =                    # 修改，本地钱包路径的绝对路径，如：/Users/zl/eosio-wallet  
 trx-broadcast-url =             # 新增，交易广播的节点url，如：http://127.0.0.1:8888  
 rsa-priv-file =                 # 新增，pem格式的私钥文件（绝对路径），如：/temp/priv.pem  
 rsa-pub-file =                  # 新增，pem格式的公钥文件（绝对路径），如：/temp/pub.pem  
