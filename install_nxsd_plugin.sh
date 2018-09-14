@@ -8,6 +8,8 @@
 # file:   install_nxsd_plugin.sh
 # ****************************************************************
 
+# set -o errexit
+
 function usage()
 {
   if [ "X$1" == "Xp" ]
@@ -93,11 +95,18 @@ function change_cmakelist_files()
   fi
 }
 
+function del_irrelevant_dir_under_github_folder()
+{
+  rm -rf $*/scripts
+  rm -rf $*/nx_wallet
+}
+
 function del_irrelevant_entity()
 {
+  del_irrelevant_dir_under_github_folder ${eos_nxsd_plugin_dir}
+
   rm -rf ${eos_nxsd_plugin_dir}/contracts
   rm -f  ${eos_nxsd_plugin_dir}/install_nxsd_plugin.sh
-  rm -rf ${eos_nxsd_plugin_dir}/scripts
 }
 
 function copy_plugin_dir()
@@ -118,7 +127,8 @@ function copy_plugin_dir_to_github()
   github_plugin_dir=/Users/app/eosio/nxsd-eos
   if [ -d ${github_plugin_dir} ]; then
     cp -rp ./* ${github_plugin_dir}
-    rm -rf ${github_plugin_dir}/scripts
+    
+    del_irrelevant_dir_under_github_folder ${github_plugin_dir}
   fi
 }
 
@@ -126,7 +136,7 @@ function make_install()
 {
   echo "****************************************"
   echo "Be going to make install EOSIO programs"
-  echo "Please input the password for ROOT"
+  echo "Please input the password for SUDO"
   echo "****************************************"
 
   cd ${eos_build_dir} && sudo make install
